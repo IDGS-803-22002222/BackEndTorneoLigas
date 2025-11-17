@@ -99,32 +99,33 @@ namespace BackEndTorneo.Data
             {
                 await con.OpenAsync();
                 SqlCommand cmd = new SqlCommand(@"
-                    INSERT INTO Usuarios (
-                        Usua_NombreCompleto, 
-                        Usua_Email, 
-                        Usua_Telefono, 
-                        Usua_Password, 
-                        Rol_Id, 
-                        Usua_FechaNacimiento,
-                        Usua_FechaRegistro,
-                        Usua_Activo
-                    )
-                    VALUES (
-                        @NombreCompleto, 
-                        @Email, 
-                        @Telefono, 
-                        @Password, 
-                        2, 
-                        @FechaNacimiento,
-                        GETDATE(),
-                        1
-                    );
-                    SELECT CAST(SCOPE_IDENTITY() as int)", con);
+            INSERT INTO Usuarios (
+                Usua_NombreCompleto, 
+                Usua_Email, 
+                Usua_Telefono, 
+                Usua_Password, 
+                Rol_Id, 
+                Usua_FechaNacimiento,
+                Usua_FechaRegistro,
+                Usua_Activo
+            )
+            VALUES (
+                @NombreCompleto, 
+                @Email, 
+                @Telefono, 
+                @Password, 
+                @RolId, 
+                @FechaNacimiento,
+                GETDATE(),
+                1
+            );
+            SELECT CAST(SCOPE_IDENTITY() as int)", con);
 
                 cmd.Parameters.AddWithValue("@NombreCompleto", registro.Usua_NombreCompleto);
                 cmd.Parameters.AddWithValue("@Email", registro.Usua_Email);
                 cmd.Parameters.AddWithValue("@Telefono", registro.Usua_Telefono);
                 cmd.Parameters.AddWithValue("@Password", passwordHash);
+                cmd.Parameters.AddWithValue("@RolId", registro.Rol_Id ?? 2); 
                 cmd.Parameters.AddWithValue("@FechaNacimiento", registro.Usua_FechaNacimiento ?? (object)DBNull.Value);
 
                 var usuaId = await cmd.ExecuteScalarAsync();
