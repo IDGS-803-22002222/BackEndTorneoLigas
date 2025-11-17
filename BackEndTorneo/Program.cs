@@ -16,6 +16,7 @@ builder.Services.AddScoped<SedesData>();
 builder.Services.AddScoped<QRData>();
 builder.Services.AddScoped<EstadisticasData>();
 builder.Services.AddScoped<NotificacionesData>();
+builder.Services.AddScoped<UsuariosData>();
 
 // Registrar JwtHelper
 builder.Services.AddScoped<JwtHelper>();
