@@ -232,20 +232,17 @@ namespace BackEndTorneo.Data
 
         public async Task<List<dynamic>> ObtenerEquiposDelTorneo(int torneoId)
         {
-            List<dynamic> lista = new List<dynamic>();
+            var lista = new List<dynamic>();
             using (var con = new SqlConnection(conexion))
             {
                 await con.OpenAsync();
+
+         
                 SqlCommand cmd = new SqlCommand(@"
-                    SELECT 
-                        e.Equi_Id,
-                        e.Equi_Nombre,
-                        e.Equi_Logo,
-                        et.EqTo_FechaInscripcion
-                    FROM Equipos_Torneos et
-                    INNER JOIN Equipos e ON et.Equi_Id = e.Equi_Id
-                    WHERE et.Torn_Id = @TorneoId AND et.EqTo_Activo = 1
-                    ORDER BY et.EqTo_FechaInscripcion", con);
+            SELECT e.Equi_Id, e.Equi_Nombre, e.Equi_Logo
+            FROM Equipos e
+            INNER JOIN Equipos_Torneos i ON e.Equi_Id = i.Equi_Id
+            WHERE i.Torn_Id = @TorneoId AND i.EqTo_Activo = 1", con);
 
                 cmd.Parameters.AddWithValue("@TorneoId", torneoId);
 
@@ -255,17 +252,17 @@ namespace BackEndTorneo.Data
                     {
                         lista.Add(new
                         {
-                            Equi_Id = Convert.ToInt32(reader["Equi_Id"]),
+                            Equi_Id = reader["Equi_Id"],
                             Equi_Nombre = reader["Equi_Nombre"].ToString(),
-                            Equi_Logo = reader["Equi_Logo"].ToString(),
-                            EqTo_FechaInscripcion = Convert.ToDateTime(reader["EqTo_FechaInscripcion"])
+                            Equi_Logo = reader["Equi_Logo"] != DBNull.Value ? reader["Equi_Logo"].ToString() : "",
+
+                            Equi_Categoria = "General"
                         });
                     }
                 }
             }
             return lista;
         }
-
         public async Task<bool> CambiarEstadoTorneo(int torneoId, string estado)
         {
             using (var con = new SqlConnection(conexion))

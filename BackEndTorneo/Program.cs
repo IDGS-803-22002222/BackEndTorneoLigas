@@ -1,5 +1,6 @@
 using BackEndTorneo.Data;
 using BackEndTorneo.Helpers;
+using BackEndTorneo.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -17,6 +18,10 @@ builder.Services.AddScoped<QRData>();
 builder.Services.AddScoped<EstadisticasData>();
 builder.Services.AddScoped<NotificacionesData>();
 builder.Services.AddScoped<UsuariosData>();
+builder.Services.AddHttpClient<ClaudeService>();
+builder.Services.AddScoped<ClaudeService>();
+
+
 
 // Registrar JwtHelper
 builder.Services.AddScoped<JwtHelper>();
