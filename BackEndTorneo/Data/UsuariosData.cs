@@ -154,6 +154,7 @@ namespace BackEndTorneo.Data
             }
             return lista;
         }
+
         public async Task<List<Usuario>> ObtenerUsuariosPorRolTodos(int rolId)
         {
             List<Usuario> lista = new List<Usuario>();
