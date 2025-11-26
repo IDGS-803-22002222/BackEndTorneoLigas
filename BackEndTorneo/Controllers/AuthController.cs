@@ -78,5 +78,135 @@ namespace BackEndTorneo.Controllers
                 return BadRequest(new { isSuccess = false, message = ex.Message });
             }
         }
+        [HttpGet("validar-qr/{token}")]
+        public async Task<IActionResult> ValidarQR(string token)
+        {
+            try
+            {
+                // Validar si es QR de capitán
+                var qrCapitan = await _authData.ValidarQRCapitan(token);
+                if (qrCapitan)
+                {
+                    return Ok(new
+                    {
+                        isSuccess = true,
+                        data = new
+                        {
+                            type = "CAPITAN",
+                            token = token
+                        }
+                    });
+                }
+
+                return BadRequest(new { isSuccess = false, message = "Código QR inválido" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { isSuccess = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("registro-capitan")]
+        public async Task<IActionResult> RegistroCapitan([FromBody] RegistroCapitanRequest request)
+        {
+            try
+            {
+                // Validar que el token QR sea válido
+                var validado = await _authData.ValidarYMarcarQRCapitan(request.Token);
+                if (!validado)
+                {
+                    return BadRequest(new { isSuccess = false, message = "Token QR inválido o ya usado" });
+                }
+
+                bool emailExiste = await _authData.VerificarEmailExiste(request.Email);
+                if (emailExiste)
+                {
+                    return BadRequest(new { isSuccess = false, message = "El email ya está registrado" });
+                }
+
+                var passwordHash = PasswordHelper.HashPassword(request.Password);
+
+                var registro = new Register
+                {
+                    Usua_NombreCompleto = request.Nombre,
+                    Usua_Email = request.Email,
+                    Usua_Password = request.Password,
+                    Usua_Telefono = request.Telefono,
+                    Rol_Id = 3 // Capitán
+                };
+
+                int usuaId = await _authData.Registrar(registro, passwordHash);
+
+                // Login automático
+                var usuario = await _authData.Login(request.Email);
+                var token = _jwtHelper.GenerateToken(
+                    usuario.Usua_Id,
+                    usuario.Usua_Email!,
+                    usuario.Rol_Id,
+                    usuario.Rol_Nombre!
+                );
+
+                usuario.Token = token;
+
+                return Ok(new
+                {
+                    isSuccess = true,
+                    data = usuario,
+                    message = "Capitán registrado exitosamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { isSuccess = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("registro-arbitro")]
+        public async Task<IActionResult> RegistroArbitro([FromBody] RegistroArbitroRequest request)
+        {
+            try
+            {
+                bool emailExiste = await _authData.VerificarEmailExiste(request.Email);
+                if (emailExiste)
+                {
+                    return BadRequest(new { isSuccess = false, message = "El email ya está registrado" });
+                }
+
+                var passwordHash = PasswordHelper.HashPassword(request.Password);
+
+                var registro = new Register
+                {
+                    Usua_NombreCompleto = request.Nombre,
+                    Usua_Email = request.Email,
+                    Usua_Password = request.Password,
+                    Usua_Telefono = request.Telefono,
+                    Rol_Id = 4 // Árbitro
+                };
+
+                int usuaId = await _authData.Registrar(registro, passwordHash);
+
+                // Login automático
+                var usuario = await _authData.Login(request.Email);
+                var token = _jwtHelper.GenerateToken(
+                    usuario.Usua_Id,
+                    usuario.Usua_Email!,
+                    usuario.Rol_Id,
+                    usuario.Rol_Nombre!
+                );
+
+                usuario.Token = token;
+
+                return Ok(new
+                {
+                    isSuccess = true,
+                    data = usuario,
+                    message = "Árbitro registrado exitosamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { isSuccess = false, message = ex.Message });
+            }
+        }
     }
 }

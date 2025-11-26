@@ -132,5 +132,55 @@ namespace BackEndTorneo.Data
                 return Convert.ToInt32(usuaId);
             }
         }
+        public async Task<bool> ValidarQRCapitan(string token)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"
+            SELECT COUNT(1) 
+            FROM QR_Capitanes 
+            WHERE QRCa_Codigo = @Token 
+              AND QRCa_Usado = 0 
+              AND QRCa_FechaExpiracion > GETDATE()", con);
+
+                cmd.Parameters.AddWithValue("@Token", token);
+
+                int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                return count > 0;
+            }
+        }
+
+        public async Task<bool> ValidarYMarcarQRCapitan(string token)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+
+                // Validar
+                SqlCommand cmdValidar = new SqlCommand(@"
+            SELECT COUNT(1) 
+            FROM QR_Capitanes 
+            WHERE QRCa_Codigo = @Token 
+              AND QRCa_Usado = 0 
+              AND QRCa_FechaExpiracion > GETDATE()", con);
+
+                cmdValidar.Parameters.AddWithValue("@Token", token);
+                int valido = Convert.ToInt32(await cmdValidar.ExecuteScalarAsync());
+
+                if (valido == 0) return false;
+
+                // Marcar como usado
+                SqlCommand cmdMarcar = new SqlCommand(@"
+            UPDATE QR_Capitanes 
+            SET QRCa_Usado = 1 
+            WHERE QRCa_Codigo = @Token", con);
+
+                cmdMarcar.Parameters.AddWithValue("@Token", token);
+                await cmdMarcar.ExecuteNonQueryAsync();
+
+                return true;
+            }
+        }
     }
 }
