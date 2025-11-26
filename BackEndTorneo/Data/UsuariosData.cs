@@ -154,6 +154,42 @@ namespace BackEndTorneo.Data
             }
             return lista;
         }
+        public async Task<List<Usuario>> ObtenerUsuariosPorRolTodos(int rolId)
+        {
+            List<Usuario> lista = new List<Usuario>();
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"
+                    SELECT 
+                        u.Usua_Id,
+                        u.Usua_NombreCompleto,
+                        u.Usua_Email,
+                        u.Usua_Telefono,
+                        u.Rol_Id,
+                        r.Rol_Nombre,
+                        u.Usua_FechaNacimiento,
+                        u.Usua_Foto,
+                        u.Usua_FechaRegistro,
+                        u.Usua_UltimoAcceso,
+                        u.Usua_Activo
+                    FROM Usuarios u
+                    INNER JOIN Roles r ON u.Rol_Id = r.Rol_Id
+                    WHERE u.Rol_Id = @RolId 
+                    ORDER BY u.Usua_NombreCompleto", con);
+
+                cmd.Parameters.AddWithValue("@RolId", rolId);
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lista.Add(MapearUsuario(reader));
+                    }
+                }
+            }
+            return lista;
+        }
 
         private Usuario MapearUsuario(SqlDataReader reader)
         {
