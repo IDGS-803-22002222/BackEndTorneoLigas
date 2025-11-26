@@ -121,6 +121,7 @@ namespace BackEndTorneo.Data
         public async Task<List<Usuario>> ObtenerUsuariosPorRol(int rolId)
         {
             List<Usuario> lista = new List<Usuario>();
+
             using (var con = new SqlConnection(conexion))
             {
                 await con.OpenAsync();
