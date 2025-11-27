@@ -102,6 +102,51 @@ namespace BackEndTorneo.Data
             return equipo;
         }
 
+        public async Task<Equipo?> ObtenerEquipoPorCapitan(int usuaId)
+        {
+            Equipo? equipo = null;
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"
+                    SELECT 
+                        e.Equi_Id,
+                        e.Equi_Nombre,
+                        e.Equi_Logo,
+                        e.Equi_ColorUniforme,
+                        e.Usua_Id,
+                        u.Usua_NombreCompleto,
+                        e.Equi_CodigoQR,
+                        e.Equi_FechaCreacion,
+                        e.Equi_Activo
+                    FROM Equipos e
+                    LEFT JOIN Usuarios u ON e.Usua_Id = u.Usua_Id
+                    WHERE e.Usua_Id = @UsuaId AND e.Equi_Activo = 1", con);
+
+                cmd.Parameters.AddWithValue("@UsuaId", usuaId);
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        equipo = new Equipo
+                        {
+                            Equi_Id = Convert.ToInt32(reader["Equi_Id"]),
+                            Equi_Nombre = reader["Equi_Nombre"].ToString(),
+                            Equi_Logo = reader["Equi_Logo"].ToString(),
+                            Equi_ColorUniforme = reader["Equi_ColorUniforme"].ToString(),
+                            Usua_Id = reader["Usua_Id"] != DBNull.Value ? Convert.ToInt32(reader["Usua_Id"]) : null,
+                            Usua_NombreCompleto = reader["Usua_NombreCompleto"].ToString(),
+                            Equi_CodigoQR = reader["Equi_CodigoQR"].ToString(),
+                            Equi_FechaCreacion = reader["Equi_FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(reader["Equi_FechaCreacion"]) : null,
+                            Equi_Activo = reader["Equi_Activo"] != DBNull.Value ? Convert.ToBoolean(reader["Equi_Activo"]) : null
+                        };
+                    }
+                }
+            }
+            return equipo;
+        }
+
         public async Task<int> CrearEquipo(CrearEquipo equipo)
         {
             using (var con = new SqlConnection(conexion))

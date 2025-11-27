@@ -1,6 +1,7 @@
 ﻿using BackEndTorneo.Data;
 using BackEndTorneo.Helpers;
 using BackEndTorneo.Models.Auth;
+using BackEndTorneo.Models.Jugadores;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackEndTorneo.Controllers
@@ -11,11 +12,13 @@ namespace BackEndTorneo.Controllers
     {
         private readonly AuthData _authData;
         private readonly JwtHelper _jwtHelper;
+        private readonly JugadoresData _jugadoresData;
 
-        public AuthController(AuthData authData, JwtHelper jwtHelper)
+        public AuthController(AuthData authData, JwtHelper jwtHelper, JugadoresData jugadoresData)
         {
             _authData = authData;
             _jwtHelper = jwtHelper;
+            _jugadoresData = jugadoresData;
         }
 
         [HttpPost("login")]
@@ -201,6 +204,78 @@ namespace BackEndTorneo.Controllers
                     isSuccess = true,
                     data = usuario,
                     message = "Árbitro registrado exitosamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { isSuccess = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("registro-jugador")]
+        public async Task<IActionResult> RegistroJugador([FromBody] RegistroJugadorRequest request)
+        {
+            try
+            {
+                // Validar que el email no exista
+                bool emailExiste = await _authData.VerificarEmailExiste(request.Email);
+                if (emailExiste)
+                {
+                    return BadRequest(new { isSuccess = false, message = "El email ya está registrado" });
+                }
+
+                // Validar el QR de equipo y obtener el equipoId real
+                int? equipoId = await _jugadoresData.ValidarYObtenerEquipoDeQR(request.Token);
+                if (equipoId == null)
+                {
+                    return BadRequest(new { isSuccess = false, message = "Código QR inválido o equipo inactivo" });
+                }
+
+                // Registrar usuario como jugador
+                var passwordHash = PasswordHelper.HashPassword(request.Password);
+
+                var registro = new Register
+                {
+                    Usua_NombreCompleto = request.Nombre,
+                    Usua_Email = request.Email,
+                    Usua_Password = request.Password,
+                    Usua_Telefono = request.Telefono,
+                    Rol_Id = 2 // Jugador
+                };
+
+                int usuaId = await _authData.Registrar(registro, passwordHash);
+
+                // Inscribir jugador al equipo
+                var inscripcion = new InscribirJugador
+                {
+                    CodigoQR = request.Token,
+                    Usua_Id = usuaId,
+                    Juga_Numero = request.NumeroCamiseta,
+                    Juga_Posicion = request.Posicion
+                };
+
+                bool inscrito = await _jugadoresData.InscribirJugador(inscripcion, equipoId.Value);
+                if (!inscrito)
+                {
+                    return BadRequest(new { isSuccess = false, message = "No se pudo inscribir al jugador en el equipo" });
+                }
+
+                // Login automático
+                var usuario = await _authData.Login(request.Email);
+                var token = _jwtHelper.GenerateToken(
+                    usuario!.Usua_Id,
+                    usuario.Usua_Email!,
+                    usuario.Rol_Id,
+                    usuario.Rol_Nombre!
+                );
+
+                usuario.Token = token;
+
+                return Ok(new
+                {
+                    isSuccess = true,
+                    data = usuario,
+                    message = "Jugador registrado e inscrito exitosamente"
                 });
             }
             catch (Exception ex)

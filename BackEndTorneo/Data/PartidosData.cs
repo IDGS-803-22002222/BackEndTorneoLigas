@@ -257,6 +257,93 @@ namespace BackEndTorneo.Data
             }
         }
 
+        public async Task<bool> CambiarEstadoPartido(int partidoId, string estado)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"UPDATE Partidos SET Part_Estado = @Estado WHERE Part_Id = @PartidoId", con);
+                cmd.Parameters.AddWithValue("@PartidoId", partidoId);
+                cmd.Parameters.AddWithValue("@Estado", estado);
+                return await cmd.ExecuteNonQueryAsync() > 0;
+            }
+        }
+
+        public async Task<bool> FinalizarPartidoAutomatico(int partidoId)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+
+                // Obtener datos del partido
+                SqlCommand cmdPartido = new SqlCommand(@"SELECT Torn_Id, Equi_Id_Local, Equi_Id_Visitante FROM Partidos WHERE Part_Id = @PartidoId", con);
+                cmdPartido.Parameters.AddWithValue("@PartidoId", partidoId);
+
+                int? torneoId = null;
+                int equiLocal = 0;
+                int equiVisitante = 0;
+
+                using (var reader = await cmdPartido.ExecuteReaderAsync())
+                {
+                    if (!await reader.ReadAsync())
+                    {
+                        return false;
+                    }
+
+                    torneoId = Convert.ToInt32(reader["Torn_Id"]);
+                    equiLocal = Convert.ToInt32(reader["Equi_Id_Local"]);
+                    equiVisitante = Convert.ToInt32(reader["Equi_Id_Visitante"]);
+                }
+
+                // Obtener goles por equipo a partir de EstadisticasPartido
+                SqlCommand cmdGoles = new SqlCommand(@"
+                    SELECT j.Equi_Id, SUM(ep.EsPa_Goles) AS Goles
+                    FROM EstadisticasPartido ep
+                    INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+                    WHERE ep.Part_Id = @PartidoId
+                    GROUP BY j.Equi_Id", con);
+
+                cmdGoles.Parameters.AddWithValue("@PartidoId", partidoId);
+
+                int golesLocal = 0;
+                int golesVisitante = 0;
+
+                using (var readerG = await cmdGoles.ExecuteReaderAsync())
+                {
+                    while (await readerG.ReadAsync())
+                    {
+                        int equiId = Convert.ToInt32(readerG["Equi_Id"]);
+                        int goles = Convert.ToInt32(readerG["Goles"]);
+
+                        if (equiId == equiLocal)
+                            golesLocal = goles;
+                        else if (equiId == equiVisitante)
+                            golesVisitante = goles;
+                    }
+                }
+
+                // Actualizar resultado y estado
+                SqlCommand cmdUpdate = new SqlCommand(@"UPDATE Partidos SET
+                        Part_GolesLocal = @GolesLocal,
+                        Part_GolesVisitante = @GolesVisitante,
+                        Part_Estado = 'Finalizado'
+                    WHERE Part_Id = @PartidoId", con);
+
+                cmdUpdate.Parameters.AddWithValue("@PartidoId", partidoId);
+                cmdUpdate.Parameters.AddWithValue("@GolesLocal", golesLocal);
+                cmdUpdate.Parameters.AddWithValue("@GolesVisitante", golesVisitante);
+
+                bool actualizado = await cmdUpdate.ExecuteNonQueryAsync() > 0;
+
+                if (actualizado)
+                {
+                    await ActualizarTablaPosiciones(con, partidoId);
+                }
+
+                return actualizado;
+            }
+        }
+
         public async Task<List<Partido>> ObtenerProximosPartidos()
         {
             List<Partido> lista = new List<Partido>();

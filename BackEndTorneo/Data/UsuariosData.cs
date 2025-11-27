@@ -106,6 +106,27 @@ namespace BackEndTorneo.Data
             }
         }
 
+        public async Task<bool> ActualizarPerfilBasico(int usuaId, string nombre, string email, string? telefono)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"
+                    UPDATE Usuarios SET
+                        Usua_NombreCompleto = @NombreCompleto,
+                        Usua_Email = @Email,
+                        Usua_Telefono = @Telefono
+                    WHERE Usua_Id = @UsuaId", con);
+
+                cmd.Parameters.AddWithValue("@UsuaId", usuaId);
+                cmd.Parameters.AddWithValue("@NombreCompleto", nombre);
+                cmd.Parameters.AddWithValue("@Email", email);
+                cmd.Parameters.AddWithValue("@Telefono", (object?)telefono ?? DBNull.Value);
+
+                return await cmd.ExecuteNonQueryAsync() > 0;
+            }
+        }
+
         public async Task<bool> EliminarUsuario(int usuaId)
         {
             using (var con = new SqlConnection(conexion))

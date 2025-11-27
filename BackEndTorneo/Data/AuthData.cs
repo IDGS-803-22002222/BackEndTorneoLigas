@@ -80,6 +80,18 @@ namespace BackEndTorneo.Data
             }
         }
 
+        public async Task<bool> ActualizarPassword(int usuaId, string nuevoPasswordHash)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand("UPDATE Usuarios SET Usua_Password = @Password WHERE Usua_Id = @Id", con);
+                cmd.Parameters.AddWithValue("@Password", nuevoPasswordHash);
+                cmd.Parameters.AddWithValue("@Id", usuaId);
+                return await cmd.ExecuteNonQueryAsync() > 0;
+            }
+        }
+
         public async Task<bool> VerificarEmailExiste(string email)
         {
             using (var con = new SqlConnection(conexion))
@@ -123,7 +135,7 @@ namespace BackEndTorneo.Data
 
                 cmd.Parameters.AddWithValue("@NombreCompleto", registro.Usua_NombreCompleto);
                 cmd.Parameters.AddWithValue("@Email", registro.Usua_Email);
-                cmd.Parameters.AddWithValue("@Telefono", registro.Usua_Telefono);
+                cmd.Parameters.AddWithValue("@Telefono", string.IsNullOrEmpty(registro.Usua_Telefono) ? (object)DBNull.Value : registro.Usua_Telefono);
                 cmd.Parameters.AddWithValue("@Password", passwordHash);
                 cmd.Parameters.AddWithValue("@RolId", registro.Rol_Id ?? 2); 
                 cmd.Parameters.AddWithValue("@FechaNacimiento", registro.Usua_FechaNacimiento ?? (object)DBNull.Value);

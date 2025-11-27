@@ -126,6 +126,56 @@ namespace BackEndTorneo.Data
             }
         }
 
+        public async Task<int?> RegistrarEstadisticaYObtenerId(RegistrarEstadistica estadistica)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand(@"
+                    INSERT INTO EstadisticasPartido (
+                        Part_Id,
+                        Juga_Id,
+                        EsPa_Goles,
+                        EsPa_Asistencias,
+                        EsPa_TarjetasAmarillas,
+                        EsPa_TarjetasRojas,
+                        EsPa_MinutosJugados
+                    )
+                    VALUES (
+                        @PartidoId,
+                        @JugadorId,
+                        @Goles,
+                        @Asistencias,
+                        @TarjetasAmarillas,
+                        @TarjetasRojas,
+                        @MinutosJugados
+                    );
+                    SELECT CAST(SCOPE_IDENTITY() as int)", con);
+
+                cmd.Parameters.AddWithValue("@PartidoId", estadistica.Part_Id);
+                cmd.Parameters.AddWithValue("@JugadorId", estadistica.Juga_Id);
+                cmd.Parameters.AddWithValue("@Goles", estadistica.EsPa_Goles);
+                cmd.Parameters.AddWithValue("@Asistencias", estadistica.EsPa_Asistencias);
+                cmd.Parameters.AddWithValue("@TarjetasAmarillas", estadistica.EsPa_TarjetasAmarillas);
+                cmd.Parameters.AddWithValue("@TarjetasRojas", estadistica.EsPa_TarjetasRojas);
+                cmd.Parameters.AddWithValue("@MinutosJugados", estadistica.EsPa_MinutosJugados);
+
+                var id = await cmd.ExecuteScalarAsync();
+                return id != null ? Convert.ToInt32(id) : (int?)null;
+            }
+        }
+
+        public async Task<bool> EliminarEstadistica(int esPaId)
+        {
+            using (var con = new SqlConnection(conexion))
+            {
+                await con.OpenAsync();
+                SqlCommand cmd = new SqlCommand("DELETE FROM EstadisticasPartido WHERE EsPa_Id = @Id", con);
+                cmd.Parameters.AddWithValue("@Id", esPaId);
+                return await cmd.ExecuteNonQueryAsync() > 0;
+            }
+        }
+
         public async Task<List<RankingGoleador>> ObtenerRankingGoleadores(int? torneoId = null)
         {
             List<RankingGoleador> lista = new List<RankingGoleador>();
