@@ -19,5 +19,13 @@
         public string? Part_Estado { get; set; }
         public int? Part_Jornada { get; set; }
         public DateTime? Part_FechaCreacion { get; set; }
+
+        public string? Goleadores_Local { get; set; }
+        public string? Tarjetas_Amarillas_Local { get; set; }
+        public string? Tarjetas_Rojas_Local { get; set; }
+
+        public string? Goleadores_Visitante { get; set; }
+        public string? Tarjetas_Amarillas_Visitante { get; set; }
+        public string? Tarjetas_Rojas_Visitante { get; set; }
     }
 }

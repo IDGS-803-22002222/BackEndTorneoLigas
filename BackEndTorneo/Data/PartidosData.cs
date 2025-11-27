@@ -64,32 +64,130 @@ namespace BackEndTorneo.Data
             {
                 await con.OpenAsync();
                 SqlCommand cmd = new SqlCommand(@"
-                    SELECT 
-                        p.Part_Id,
-                        p.Torn_Id,
-                        t.Torn_Nombre,
-                        p.Equi_Id_Local,
-                        el.Equi_Nombre AS Equi_Nombre_Local,
-                        p.Equi_Id_Visitante,
-                        ev.Equi_Nombre AS Equi_Nombre_Visitante,
-                        p.Part_FechaPartido,
-                        p.Sede_Id,
-                        s.Sede_Nombre,
-                        p.Usua_Id,
-                        u.Usua_NombreCompleto AS Arbitro_Nombre,
-                        p.Part_GolesLocal,
-                        p.Part_GolesVisitante,
-                        p.Part_Estado,
-                        p.Part_Jornada,
-                        p.Part_FechaCreacion
-                    FROM Partidos p
-                    INNER JOIN Torneos t ON p.Torn_Id = t.Torn_Id
-                    INNER JOIN Equipos el ON p.Equi_Id_Local = el.Equi_Id
-                    INNER JOIN Equipos ev ON p.Equi_Id_Visitante = ev.Equi_Id
-                    LEFT JOIN Sedes s ON p.Sede_Id = s.Sede_Id
-                    LEFT JOIN Usuarios u ON p.Usua_Id = u.Usua_Id
-                    WHERE p.Torn_Id = @TorneoId
-                    ORDER BY p.Part_Jornada, p.Part_FechaPartido", con);
+          SELECT 
+             p.Part_Id,
+             p.Torn_Id,
+             t.Torn_Nombre,
+             p.Equi_Id_Local,
+             el.Equi_Nombre AS Equi_Nombre_Local,
+             p.Equi_Id_Visitante,
+             ev.Equi_Nombre AS Equi_Nombre_Visitante,
+             p.Part_FechaPartido,
+             p.Sede_Id,
+             s.Sede_Nombre,
+             p.Usua_Id,
+             u.Usua_NombreCompleto AS Arbitro_Nombre,
+             p.Part_GolesLocal,
+             p.Part_GolesVisitante,
+             p.Part_Estado,
+             p.Part_Jornada,
+             p.Part_FechaCreacion,
+             -- Estadísticas EQUIPO LOCAL
+             gol_local.Goleadores_Local,
+             ama_local.Tarjetas_Amarillas_Local,
+             roj_local.Tarjetas_Rojas_Local,
+             -- Estadísticas EQUIPO VISITANTE
+             gol_visitante.Goleadores_Visitante,
+             ama_visitante.Tarjetas_Amarillas_Visitante,
+             roj_visitante.Tarjetas_Rojas_Visitante
+         FROM Partidos p
+         INNER JOIN Torneos t ON p.Torn_Id = t.Torn_Id
+         INNER JOIN Equipos el ON p.Equi_Id_Local = el.Equi_Id
+         INNER JOIN Equipos ev ON p.Equi_Id_Visitante = ev.Equi_Id
+         LEFT JOIN Sedes s ON p.Sede_Id = s.Sede_Id
+         LEFT JOIN Usuarios u ON p.Usua_Id = u.Usua_Id
+
+         
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_Goles, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_Goles DESC) AS Goleadores_Local
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_Goles > 0 
+               AND j.Equi_Id = p2.Equi_Id_Local  
+             GROUP BY ep.Part_Id
+         ) AS gol_local ON gol_local.Part_Id = p.Part_Id
+
+         
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_Goles, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_Goles DESC) AS Goleadores_Visitante
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_Goles > 0 
+               AND j.Equi_Id = p2.Equi_Id_Visitante 
+             GROUP BY ep.Part_Id
+         ) AS gol_visitante ON gol_visitante.Part_Id = p.Part_Id
+
+         -- 🟨 TARJETAS AMARILLAS EQUIPO LOCAL
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_TarjetasAmarillas, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_TarjetasAmarillas DESC) AS Tarjetas_Amarillas_Local
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_TarjetasAmarillas > 0 
+               AND j.Equi_Id = p2.Equi_Id_Local
+             GROUP BY ep.Part_Id
+         ) AS ama_local ON ama_local.Part_Id = p.Part_Id
+
+        
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_TarjetasAmarillas, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_TarjetasAmarillas DESC) AS Tarjetas_Amarillas_Visitante
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_TarjetasAmarillas > 0 
+               AND j.Equi_Id = p2.Equi_Id_Visitante
+             GROUP BY ep.Part_Id
+         ) AS ama_visitante ON ama_visitante.Part_Id = p.Part_Id
+
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_TarjetasRojas, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_TarjetasRojas DESC) AS Tarjetas_Rojas_Local
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_TarjetasRojas > 0 
+               AND j.Equi_Id = p2.Equi_Id_Local
+             GROUP BY ep.Part_Id
+         ) AS roj_local ON roj_local.Part_Id = p.Part_Id
+
+
+         LEFT JOIN (
+             SELECT 
+                 ep.Part_Id,
+                 STRING_AGG(CONCAT(u.Usua_NombreCompleto, ' (', ep.EsPa_TarjetasRojas, ')'), ', ')
+                     WITHIN GROUP (ORDER BY ep.EsPa_TarjetasRojas DESC) AS Tarjetas_Rojas_Visitante
+             FROM EstadisticasPartido ep
+             INNER JOIN Jugadores j ON ep.Juga_Id = j.Juga_Id
+             INNER JOIN Usuarios u ON j.Usua_Id = u.Usua_Id
+             INNER JOIN Partidos p2 ON ep.Part_Id = p2.Part_Id
+             WHERE ep.EsPa_TarjetasRojas > 0 
+               AND j.Equi_Id = p2.Equi_Id_Visitante
+             GROUP BY ep.Part_Id
+         ) AS roj_visitante ON roj_visitante.Part_Id = p.Part_Id
+
+         WHERE p.Torn_Id = @TorneoId
+         ORDER BY p.Part_Jornada, p.Part_FechaPartido", con);
 
                 cmd.Parameters.AddWithValue("@TorneoId", torneoId);
 
@@ -103,6 +201,8 @@ namespace BackEndTorneo.Data
             }
             return lista;
         }
+
+
 
         public async Task<Partido?> ObtenerPartido(int partidoId)
         {
@@ -409,8 +509,18 @@ namespace BackEndTorneo.Data
                 Part_GolesVisitante = reader["Part_GolesVisitante"] != DBNull.Value ? Convert.ToInt32(reader["Part_GolesVisitante"]) : null,
                 Part_Estado = reader["Part_Estado"].ToString(),
                 Part_Jornada = reader["Part_Jornada"] != DBNull.Value ? Convert.ToInt32(reader["Part_Jornada"]) : null,
-                Part_FechaCreacion = reader["Part_FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(reader["Part_FechaCreacion"]) : null
+                Part_FechaCreacion = reader["Part_FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(reader["Part_FechaCreacion"]) : null,
+
+
+                Goleadores_Local = reader["Goleadores_Local"] != DBNull.Value ? reader["Goleadores_Local"].ToString() : null,
+                Tarjetas_Amarillas_Local = reader["Tarjetas_Amarillas_Local"] != DBNull.Value ? reader["Tarjetas_Amarillas_Local"].ToString() : null,
+                Tarjetas_Rojas_Local = reader["Tarjetas_Rojas_Local"] != DBNull.Value ? reader["Tarjetas_Rojas_Local"].ToString() : null,
+
+                Goleadores_Visitante = reader["Goleadores_Visitante"] != DBNull.Value ? reader["Goleadores_Visitante"].ToString() : null,
+                Tarjetas_Amarillas_Visitante = reader["Tarjetas_Amarillas_Visitante"] != DBNull.Value ? reader["Tarjetas_Amarillas_Visitante"].ToString() : null,
+                Tarjetas_Rojas_Visitante = reader["Tarjetas_Rojas_Visitante"] != DBNull.Value ? reader["Tarjetas_Rojas_Visitante"].ToString() : null
             };
         }
+
     }
 }
